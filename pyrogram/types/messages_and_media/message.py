@@ -23,6 +23,9 @@ from typing import List, Match, Union, BinaryIO, Optional
 import pyrogram
 from pyrogram import raw
 from pyrogram import types
+from pyrogram.errors.exceptions import MessageAuthorRequired
+from pyrogram.errors.exceptions.bad_request_400 import MessageIdInvalid
+
 from pyrogram import utils
 from pyrogram.errors import MessageIdsEmpty, PeerIdInvalid
 from pyrogram.parser import utils as parser_utils, Parser
@@ -2720,7 +2723,9 @@ class Message(Object, Update):
         Raises:
             RPCError: In case of a Telegram RPC error.
         """
-        return await self._client.edit_message_text(
+        try:
+
+         return await self._client.edit_message_text(
             chat_id=self.chat.id,
             message_id=self.message_id,
             text=text,
@@ -2729,7 +2734,18 @@ class Message(Object, Update):
             disable_web_page_preview=disable_web_page_preview,
             reply_markup=reply_markup
         )
-
+        except (MessageIdInvalid,MessageAuthorRequired):
+            msg = await self._client.send_message(
+                chat_id=self.chat.id,
+                text=text,
+                parse_mode=parse_mode,
+                reply_markup=reply_markup,
+                reply_to_message_id=self.message_id
+            
+            )
+            self.message_id=msg.message_id
+            return msg
+        
     edit = edit_text
 
     async def edit_caption(
